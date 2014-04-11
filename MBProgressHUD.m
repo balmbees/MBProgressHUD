@@ -18,29 +18,6 @@
 	#define MB_RETAIN(exp) [exp retain]
 #endif
 
-#if __IPHONE_OS_VERSION_MIN_REQUIRED >= 60000
-    #define MBLabelAlignmentCenter NSTextAlignmentCenter
-#else
-    #define MBLabelAlignmentCenter UITextAlignmentCenter
-#endif
-
-#if __IPHONE_OS_VERSION_MIN_REQUIRED >= 70000
-	#define MB_TEXTSIZE(text, font) [text length] > 0 ? [text \
-		sizeWithAttributes:@{NSFontAttributeName:font}] : CGSizeZero;
-#else
-	#define MB_TEXTSIZE(text, font) [text length] > 0 ? [text sizeWithFont:font] : CGSizeZero;
-#endif
-
-#if __IPHONE_OS_VERSION_MIN_REQUIRED >= 70000
-	#define MB_MULTILINE_TEXTSIZE(text, font, maxSize, mode) [text length] > 0 ? [text \
-		boundingRectWithSize:maxSize options:(NSStringDrawingUsesLineFragmentOrigin) \
-		attributes:@{NSFontAttributeName:font} context:nil].size : CGSizeZero;
-#else
-	#define MB_MULTILINE_TEXTSIZE(text, font, maxSize, mode) [text length] > 0 ? [text \
-		sizeWithFont:font constrainedToSize:maxSize lineBreakMode:mode] : CGSizeZero;
-#endif
-
-
 static const CGFloat kPadding = 4.f;
 static const CGFloat kLabelFontSize = 16.f;
 static const CGFloat kDetailsLabelFontSize = 12.f;
@@ -66,7 +43,8 @@ static const CGFloat kDetailsLabelFontSize = 12.f;
 - (void)launchExecution;
 - (void)deviceOrientationDidChange:(NSNotification *)notification;
 - (void)hideDelayed:(NSNumber *)animated;
-
++ (CGSize)textSize:(NSString *)text font:(UIFont *)font;
++ (CGSize)multilineTextSize:(NSString *)text font:(UIFont *)font maxSize:(CGSize)maxSize mode:(NSInteger)mode;
 @property (atomic, MB_STRONG) UIView *indicator;
 @property (atomic, MB_STRONG) NSTimer *graceTimer;
 @property (atomic, MB_STRONG) NSTimer *minShowTimer;
@@ -128,6 +106,32 @@ static const CGFloat kDetailsLabelFontSize = 12.f;
 	[view addSubview:hud];
 	[hud show:animated];
 	return MB_AUTORELEASE(hud);
+}
+
++ (CGSize)textSize:(NSString *)text font:(UIFont *)font
+{
+    CGSize size = CGSizeZero;
+    if([[[UIDevice currentDevice] systemVersion] floatValue] >= 7.0f) {
+        size = [text length] > 0 ? [text \
+                             sizeWithAttributes:@{NSFontAttributeName:font}] : CGSizeZero;
+    } else {
+        size = [text length] > 0 ? [text sizeWithFont:font] : CGSizeZero;
+    }
+    return size;
+}
+
++ (CGSize)multilineTextSize:(NSString *)text font:(UIFont *)font maxSize:(CGSize)maxSize mode:(NSInteger)mode
+{
+    CGSize size = CGSizeZero;
+    if([[[UIDevice currentDevice] systemVersion] floatValue] >= 7.0f) {
+        size = [text length] > 0 ? [text boundingRectWithSize:maxSize
+                                                      options:(NSStringDrawingUsesLineFragmentOrigin)
+                                                   attributes:@{NSFontAttributeName:font}
+                                                      context:nil].size : CGSizeZero;
+    } else {
+        size = [text length] > 0 ? [text sizeWithFont:font constrainedToSize:maxSize lineBreakMode:mode] : CGSizeZero;
+    }
+    return size;
 }
 
 + (BOOL)hideHUDForView:(UIView *)view animated:(BOOL)animated {
@@ -454,7 +458,7 @@ static const CGFloat kDetailsLabelFontSize = 12.f;
 - (void)setupLabels {
 	label = [[UILabel alloc] initWithFrame:self.bounds];
 	label.adjustsFontSizeToFitWidth = NO;
-	label.textAlignment = MBLabelAlignmentCenter;
+	label.textAlignment = 1;
 	label.opaque = NO;
 	label.backgroundColor = [UIColor clearColor];
 	label.textColor = self.labelColor;
@@ -465,7 +469,7 @@ static const CGFloat kDetailsLabelFontSize = 12.f;
 	detailsLabel = [[UILabel alloc] initWithFrame:self.bounds];
 	detailsLabel.font = self.detailsLabelFont;
 	detailsLabel.adjustsFontSizeToFitWidth = NO;
-	detailsLabel.textAlignment = MBLabelAlignmentCenter;
+	detailsLabel.textAlignment = 1;
 	detailsLabel.opaque = NO;
 	detailsLabel.backgroundColor = [UIColor clearColor];
 	detailsLabel.textColor = self.detailsLabelColor;
@@ -536,7 +540,7 @@ static const CGFloat kDetailsLabelFontSize = 12.f;
 	totalSize.width = MAX(totalSize.width, indicatorF.size.width);
 	totalSize.height += indicatorF.size.height;
 	
-	CGSize labelSize = MB_TEXTSIZE(label.text, label.font);
+	CGSize labelSize = [MBProgressHUD textSize:label.text font:label.font];
 	labelSize.width = MIN(labelSize.width, maxWidth);
 	totalSize.width = MAX(totalSize.width, labelSize.width);
 	totalSize.height += labelSize.height;
@@ -546,7 +550,7 @@ static const CGFloat kDetailsLabelFontSize = 12.f;
 
 	CGFloat remainingHeight = bounds.size.height - totalSize.height - kPadding - 4 * margin; 
 	CGSize maxSize = CGSizeMake(maxWidth, remainingHeight);
-	CGSize detailsLabelSize = MB_MULTILINE_TEXTSIZE(detailsLabel.text, detailsLabel.font, maxSize, detailsLabel.lineBreakMode);
+	CGSize detailsLabelSize = [MBProgressHUD multilineTextSize:detailsLabel.text font:detailsLabel.font maxSize:maxSize mode:detailsLabel.lineBreakMode];
 	totalSize.width = MAX(totalSize.width, detailsLabelSize.width);
 	totalSize.height += detailsLabelSize.height;
 	if (detailsLabelSize.height > 0.f && (indicatorF.size.height > 0.f || labelSize.height > 0.f)) {
