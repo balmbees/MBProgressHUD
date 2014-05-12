@@ -520,6 +520,13 @@ static const CGFloat kDetailsLabelFontSize = 12.f;
 	}
 }
 
+- (void)setActivityIndicatorViewStyle:(UIActivityIndicatorViewStyle)activityIndicatorViewStyle
+{
+    if ([indicator isKindOfClass:[UIActivityIndicatorView class]]) {
+        [((UIActivityIndicatorView *)indicator) setActivityIndicatorViewStyle:activityIndicatorViewStyle];
+    }
+}
+
 #pragma mark - Layout
 
 - (void)layoutSubviews {
